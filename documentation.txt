@@ -1,0 +1,215 @@
+-------------------------------------------- Data Structures --------------------------------------------
+
+1: message:
+
+    This structure represents a message that can be sent over the network.
+    sequence_no:    an integer field sequence_no for the sequence number of the message.
+    data:           a character array data of size KB, presumably to hold the message data.
+
+2: send_window:
+
+    This structure is to represent a sending window, often used in sliding window protocols for flow control and reliability.
+    left_idx and right_idx:     fields to keep track of the indexes of the left and right edges of the window.
+    last_ack_seqno:             stores the sequence number of the last acknowledged message.
+    last_ack_emptyspace:        represent the last acknowledged available space in the receiver's window (rwndsize).
+    last_sent:                  to store the index number of the last sent message.
+    last_active_time:           is an array storing timestamps, potentially representing the time when each message in the window was last sent.
+    new_entry:                  is an index number representing a new entry in the window to store user data.
+    last_seq_no:                is used to keep track of the sequence number of the last message sent.
+
+3: receive_window:
+
+    This structure is to represent a receiving window, used in sliding window protocols.
+    window:                 an integer array window which represents the receiving window itself.
+    last_inorder_received:  stores the sequence number of the last message received in order.
+    last_user_taken:        represent the index number of the last message taken by the user from the receive buffer.
+    nospace:                indicate whether there is space available in the receive buffer.
+
+
+4: mtp_socket:
+
+    This is a structure named mtp_socket. Here's a breakdown of its members:
+    free:       This member appears to be a flag indicating whether the socket is free or in use. It's set to 1 when the socket is free and 0 when it's in use.
+    pid:        This member holds the process ID (PID) associated with the socket. This can be useful for tracking which process owns or is using the socket.
+    udp_sockid: This member holds an integer identifier for a UDP socket associated with this mtp_socket.
+    dest_ip:    An array of characters representing the destination IP address associated with this socket. IP_SIZE represents the maximum size of an IP address string.
+    dest_port:  This member holds the destination port number associated with the socket.
+    send_buff:  An array of message structures representing the send buffer for this socket. SEND_BUFFSIZE represents the maximum size of the send buffer.
+    recv_buff:  An array of message structures representing the receive buffer for this socket. RECV_BUFFSIZE represents the maximum size of the receive buffer.
+    swnd:       This member represents the send window associated with the socket. It is structure of type send_window
+    rwnd:       This member represents the receive window associated with the socket. It is structure of type receive_window
+
+5: shared_variables:
+
+    This is structure to store all shared variables that are need for inter-process communication
+    status:         This member is to represent the status that type of operation to do in initmsocket
+    mtp_id:         This member holds an identifier associated with the My transport Protocol (MTP) id.
+    src_addr:       This member represents a socket address structure for the source address.
+    return_value:   This member holds the return value of the operation.
+    error_no:       This member holds an error code if an operation encounters an error; then it is set to global errno
+
+
+
+-------------------------------------------- Functions --------------------------------------------
+
+___User Functions defined in msocket.c___
+
+1: int m_socket(int domain, int type, int protocol);
+
+    This function is to create a socket and return its file descriptor.
+    domain:     Specifies the communication domain, such as AF_INET for IPv4 communication.
+    type:       Specifies the socket type, such here SOCK_MTP
+    protocol:   Specifies the protocol to be used, often set to 0 to choose the default protocol for the given domain and type.
+
+2: int m_bind(int socket_id, char *src_ip, unsigned short int src_port, char *dest_ip, unsigned short int dest_port);
+
+    This function binds a socket to a specific address and port and also takes destination IP and port to storre in the shared table.
+    socket_id:  The file descriptor of the socket to bind.
+    src_ip:     The source IP address to bind to.
+    src_port:   The source port number to bind to.
+    dest_ip:    The destination IP address to bind to.
+    dest_port:  The destination port number to bind to.
+
+3: int m_sendto(int socket_id, char *buffer, int size, int flags, struct sockaddr *dest, int len);
+
+    This function sends data on a socket to a specific destination.
+    socket_id:  The file descriptor of the socket to use for sending.
+    buffer:     Pointer to the buffer containing the data to send.
+    size:       The size of the data in bytes. (here KB)
+    flags:      Flags to control the behavior of the send operation.
+    dest:       Pointer to a struct sockaddr representing the destination address.
+    len:        The size of the destination address structure.
+
+4: int m_recvfrom(int socket_id, char *buffer, int size, int flags, struct sockaddr *dest, int *len);
+
+    This function receives data from a socket
+    socket_id:  The file descriptor of the socket to receive from.
+    buffer:     Pointer to the buffer where the received data will be stored.
+    size:       The maximum size of the buffer.
+    flags:      Flags to control the behavior of the receive operation.
+    dest:       Pointer to a struct sockaddr where the sender's address will be stored.
+    len:        Pointer to an integer variable specifying the size of the dest structure; on return, it will contain the actual size of the sender's address.
+
+5: int m_close(int socket_id);
+
+    This function closes a socket, releasing its resources.
+    socket_id: The file descriptor of the socket to close.
+
+
+
+___Other Functions defined in initmsocket.c and msocket.c___
+
+1: int dropMessage(float p);
+
+    This function returns 1 if randomly generated number is less than p, otherwise 0
+    Primary purpose of this function is to be employed in dropping the message randomly at the R-thread with probability P 
+
+2: struct sockaddr_in sock_converter(char *ip, unsigned short port);
+
+    Purpose:
+    The purpose of this function is to prepare a struct sockaddr_in structure with the provided IP address and port number. This structure is commonly used in networking applications, particularly in functions like bind or connect to establish connections or assign addresses to sockets.
+
+    Arguments:
+    char *ip: A pointer to a character array representing the IP address in human-readable format (e.g., "192.168.1.1").
+    unsigned short port: An unsigned short integer representing the port number to associate with the socket address.
+    Return Value:
+    The function returns a struct sockaddr_in structure. This structure contains the converted IP address and port number in network byte order, suitable for use with socket-related functions. The caller can use this returned structure directly for various networking operations.
+
+3: int max_logical(int x, int y, int size);
+
+    Purpose:
+    The purpose of this function is to determine the maximum logical sequence number between two given sequence numbers, x and y, in a circular buffer scenario.
+
+    Arguments:
+    int x: The first sequence number.
+    int y: The second sequence number.
+    int size: The size of the circular buffer.
+
+    Return Value:
+    The function returns the maximum logical sequence number between x and y in a circular fashion, considering the circular buffer size.
+
+4: int min_logical(int x, int y, int size);
+
+    Purpose:
+    The purpose of this function is to determine the minimum logical sequence number between two given sequence numbers, x and y, in a circular buffer scenario.
+
+    Arguments:
+    int x: The first sequence number.
+    int y: The second sequence number.
+    int size: The size of the circular buffer.
+
+    Return Value:
+    The function returns the minimum logical sequence number between x and y in a circular fashion, considering the circular buffer size.
+
+5: void my_strcpy(char *a1, char *a2, int size);
+
+    Purpose:
+    The purpose of this function is to copy characters from one character array (a2) to another (a1) up to a specified size. It provides a basic string copying functionality similar to the standard library strcpy function but with a limitation on the number of characters to copy (size).
+
+    Arguments:
+    char *a1: Pointer to the destination character array where the characters will be copied.
+    char *a2: Pointer to the source character array from which characters will be copied.
+    int size: Maximum number of characters to copy from a2 to a1.
+
+6: void sigint_handler(int signum);
+
+    Purpose:
+    The purpose of this function is to handle the SIGINT signal. When the program receives a SIGINT signal, it sets a flag (sigint_received) to indicate that the signal has been received. Additionally, it performs cleanup operations such as detaching shared memory segments and then exits the program.
+
+    Arguments:
+    int signum: This argument represents the signal number that triggered the handler. In this case, it's used to check if the signal is SIGINT.
+
+7: void socket_handler(mtp_socket *MTP_Table, shared_variables *shared_resource, int *entry_sem, int *exit_sem);
+
+    Purpose:
+    This function is in initmsocket.c, it runs a infinite loop which mainly handle m_socket, m_bind and m_close call.
+    seeing value of status it does appropiate action.
+
+    Arguments:
+    It takes arguments the pointer to structure MTP_Table, other shared_resource and some semaphores.
+
+8: void *R_Thread(void *arg);
+
+    Purpose:
+    this function is to implement work of R thread as discussed in the problem statement.
+
+    Arguments:
+    It takes a void * argument. We send a structure object MTP_Table and other shared_resource as argument 
+
+8: void *S_Thread(void *arg);
+
+    Purpose:
+    this function is to implement work of S thread as discussed in the problem statement.
+
+    Arguments:
+    It takes a void * argument. We send a structure object MTP_Table and other shared_resource as argument 
+
+8: void *G_Thread(void *arg);
+
+    Purpose:
+    this function is to implement work of garbage collector as discussed in the problem statement.
+
+    Arguments:
+    It takes a void * argument. We send a structure object MTP_Table and other shared_resource as argument 
+
+9: other create and initialize functions for creating and initializing shared variables and semaphores
+
+
+
+------ Table for varying ratio of no of transmissions to sent and no. of messages generated vs probability of dropping messages ------
+
+* Data collected for same file of size 128.84 KB 
+
+|   p   |  no of transmissions to send   |  no. of messages generated   |  average number of transmissions made to send each message   |
+|-------|--------------------------------|------------------------------|--------------------------------------------------------------|
+| 0.05  |              139               |             130              |                              1.07                            |
+| 0.10  |              159               |             130              |                              1.22                            |
+| 0.15  |              173               |             130              |                              1.33                            |
+| 0.20  |              210               |             130              |                              1.62                            |
+| 0.25  |              220               |             130              |                              1.69                            |
+| 0.30  |              241               |             130              |                              1.85                            |
+| 0.35  |              299               |             130              |                              2.30                            |
+| 0.40  |              311               |             130              |                              2.39                            |
+| 0.45  |              320               |             130              |                              2.46                            |
+| 0.50  |              414               |             130              |                              3.18                            |
+
